@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from models import db, Product,Order
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://postgres:123456@localhost:5433/test'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
