@@ -141,121 +141,61 @@ def delete_product(product_id):
 
 #End point de pedidos
 #Metodo POST crear order
-@app.route('/orders', methods=['POST'])
-def add_order():
-    try:
-        data = request.json
-        name = data.get('name')
-        cant_product = data.get('cant_product')
-        total = data.get('total')
-        product_id = data.get('product_id')
-        if not cant_product or not total or not product_id or not name:
-            return jsonify({'message': 'Bad request, name or cant_product or total or product not found'}), 400
-        new_order = Order(name=name, cant_product=cant_product, total=total, product_id=product_id)
-        db.session.add(new_order)
-        db.session.commit()
-        return jsonify({'order': {'id': new_order.id, 'name': new_order.name, 'cant_product': new_order.cant_product, 'total': new_order.total}}), 201
-    except Exception as error:
-        print('Error', error)
-        return jsonify({'message': 'Internal server error'}), 500
 
-
-#Metodo GET consultar precios
-@app.route('/orders', methods=['GET'])
+@app.route('/order', methods=['GET'])
 def get_orders():
-    try:
-        orders = Order.query.all()
-        orders_data = []
-        for order in orders:
-            order_data = {
-                'id': order.id,
-                'name': order.name,
-                'cant_product': order.cant_product,
-                'total': order.total
-            }
-            orders_data.append(order_data)
-        return jsonify({'orders': orders_data})
-    except Exception as error:
-        print('Error', error)
-        return jsonify({'message': 'Internal server error'}), 500
-    
- 
-#Consultar precios por id 
-@app.route('/orders/<int:order_id>', methods=['GET'])
-def get_order_by_id(order_id):
-    try:
-        order = Order.query.get(order_id)
-        if not order:
-            return jsonify({'message': f'order with id {order_id} not found'}), 404
-
-        order_data = {
-            'id': order.id,
-            'name': order.name,
-            'cant_product': order.cant_product,
-            'total': order.total,
-            'createdAt': order.created_at,
-            'product_id': order.product_id
-        }
-        return jsonify({'order': order_data})
-    except Exception as error:
-        print('Error', error)
-        return jsonify({'message': 'Internal server error'}), 500
-    
-
-#Actualizar precios
-@app.route('/orders/<int:order_id>', methods=['PUT'])
-def update_order(order_id):
-    try:
-        order = Order.query.get(order_id)
-        if not order:
-            return jsonify({'message': f'order with id {order_id} not found'}), 404
-
-        data = request.json
-        name = data.get('name')
-        cant_product = data.get('cant_product')
-        total = data.get('total')
-        product_id = data.get('product_id')
-
-        if name:
-            order.name = name
-        if cant_product:
-            order.cant_product = cant_product
-        if total:
-            order.total = total
-        if product_id:
-            order.product_id = product_id
-
-        db.session.commit()
-
-        return jsonify({
-            'order': {
-                'id': order.id,
-                'name': order.name,
-                'cant_product': order.cant_product,
-                'total': order.total,
-                'product_id': order.product_id
-            }
+    orders = Order.query.all()
+    data = []
+    for order in orders:
+        data.append({
+            "id": order.id,
+            "name": order.name,
+            "cant_product": order.cant_product,
+            "total": order.total,
+            "product_id": order.product_id
         })
-    except Exception as error:
-        print('Error', error)
-        return jsonify({'message': 'Internal server error'}), 500
+    return jsonify({"orders": data})
 
-#Metodo DELETE para eliminar un producto por id
-@app.route('/orders/<int:order_id>', methods=['DELETE'])
-def delete_order(order_id):
-    try:
-        order = Order.query.get(order_id)
-        if not order:
-            return jsonify({'message': f'order with id {order_id} not found'}), 404
 
-        db.session.delete(order)
-        db.session.commit()
+@app.route('/order', methods=['POST'])
+def create_order():
+    data = request.json
+    product = Product.query.filter_by(name=data['name']).first()
+    if not product:
+        return jsonify({"error": "Producto no encontrado"}), 404
+    total = int(data['cant_product']) * product.price
+    new_order = Order(
+        name=data['name'],
+        cant_product=data['cant_product'],
+        total=total,
+        product_id=product.id
+    )
+    db.session.add(new_order)
+    db.session.commit()
+    return jsonify({"message": "Pedido creado correctamente"}), 201
 
-        return jsonify({'message': f'order with id {order_id} deleted successfully'})
-    except Exception as error:
-        print('Error', error)
-        return jsonify({'message': 'Internal server error'}), 500
 
+@app.route('/order/<int:id>', methods=['PUT'])
+def update_order(id):
+    data = request.json
+    order = Order.query.get_or_404(id)
+    product = Product.query.filter_by(name=data['name']).first()
+    if not product:
+        return jsonify({"error": "Producto no encontrado"}), 404
+    order.name = data['name']
+    order.cant_product = data['cant_product']
+    order.total = int(data['cant_product']) * product.price
+    order.product_id = product.id
+    db.session.commit()
+    return jsonify({"message": "Pedido actualizado"})
+
+
+@app.route('/order/<int:id>', methods=['DELETE'])
+def delete_order(id):
+    order = Order.query.get_or_404(id)
+    db.session.delete(order)
+    db.session.commit()
+    return jsonify({"message": "Pedido eliminado correctamente"})
 
 if __name__ == '__main__':
     with app.app_context():
